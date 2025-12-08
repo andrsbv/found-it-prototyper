@@ -4,8 +4,20 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useParams, useNavigate } from "react-router-dom";
-import { Clock, MapPin, Tag, User, Mail, Phone, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
-
+import { Clock, MapPin, Tag, User, Mail, Phone, ArrowLeft, CheckCircle, AlertCircle, Share2, Flag } from "lucide-react";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
 const ItemDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -240,35 +252,153 @@ const ItemDetail = () => {
 
                 <div className="space-y-3">
                   {item.status === "lost" ? (
-                    <>
-                      <Button className="w-full" size="lg">
-                        Lo Encontré
-                      </Button>
-                      <p className="text-xs text-center text-muted-foreground">
-                        Si encontraste este objeto, haz click para notificar al dueño
-                      </p>
-                    </>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button className="w-full" size="lg">
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Lo Encontré
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>¡Encontraste este objeto!</DialogTitle>
+                          <DialogDescription>
+                            Confirma que encontraste "{item.title}" para notificar al dueño.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="found-message">Mensaje para el dueño (opcional)</Label>
+                            <Textarea 
+                              id="found-message" 
+                              placeholder="Ej: Lo encontré en la cafetería, puedo entregarlo mañana..."
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button 
+                            onClick={() => {
+                              toast.success("¡Notificación enviada!", {
+                                description: "El dueño ha sido notificado. Te contactará pronto."
+                              });
+                            }}
+                          >
+                            Confirmar y Notificar
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   ) : (
-                    <>
-                      <Button className="w-full" size="lg">
-                        Es Mío
-                      </Button>
-                      <p className="text-xs text-center text-muted-foreground">
-                        Si este es tu objeto, solicita la devolución
-                      </p>
-                    </>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button className="w-full" size="lg">
+                          <User className="mr-2 h-4 w-4" />
+                          Es Mío
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Reclamar este objeto</DialogTitle>
+                          <DialogDescription>
+                            Describe características únicas del objeto para verificar que eres el dueño.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="claim-description">Descripción detallada</Label>
+                            <Textarea 
+                              id="claim-description" 
+                              placeholder="Describe marcas, contenido, o detalles que solo el dueño conocería..."
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button 
+                            onClick={() => {
+                              toast.success("¡Solicitud enviada!", {
+                                description: "Tu solicitud será revisada. Te contactaremos pronto."
+                              });
+                            }}
+                          >
+                            Enviar Solicitud
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   )}
+                  <p className="text-xs text-center text-muted-foreground">
+                    {item.status === "lost" 
+                      ? "Si encontraste este objeto, haz click para notificar al dueño"
+                      : "Si este es tu objeto, solicita la devolución"
+                    }
+                  </p>
                 </div>
 
                 <Separator />
 
                 <div className="space-y-2">
-                  <Button variant="outline" className="w-full">
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => {
+                      const shareUrl = window.location.href;
+                      const shareText = `${item.status === "lost" ? "Objeto perdido" : "Objeto encontrado"}: ${item.title} en ${item.location}`;
+                      
+                      if (navigator.share) {
+                        navigator.share({
+                          title: item.title,
+                          text: shareText,
+                          url: shareUrl,
+                        });
+                      } else {
+                        navigator.clipboard.writeText(shareUrl);
+                        toast.success("¡Enlace copiado!", {
+                          description: "El enlace del reporte ha sido copiado al portapapeles."
+                        });
+                      }
+                    }}
+                  >
+                    <Share2 className="mr-2 h-4 w-4" />
                     Compartir Reporte
                   </Button>
-                  <Button variant="ghost" className="w-full text-destructive hover:text-destructive">
-                    Reportar Problema
-                  </Button>
+                  
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" className="w-full text-destructive hover:text-destructive">
+                        <Flag className="mr-2 h-4 w-4" />
+                        Reportar Problema
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Reportar un problema</DialogTitle>
+                        <DialogDescription>
+                          ¿Hay algo incorrecto con este reporte? Cuéntanos.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="problem-description">Describe el problema</Label>
+                          <Textarea 
+                            id="problem-description" 
+                            placeholder="Ej: Información falsa, contenido inapropiado, duplicado..."
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button 
+                          variant="destructive"
+                          onClick={() => {
+                            toast.success("Reporte enviado", {
+                              description: "Gracias por tu reporte. Lo revisaremos pronto."
+                            });
+                          }}
+                        >
+                          Enviar Reporte
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </CardContent>
             </Card>

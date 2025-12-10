@@ -1,88 +1,112 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 
-interface User {
+interface Profile {
   id: string;
+  full_name: string;
   email: string;
-  fullName: string;
-  phone?: string;
+  phone: string | null;
+  avatar_url: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
+  profile: Profile | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (data: { fullName: string; email: string; phone: string; password: string }) => Promise<boolean>;
-  logout: () => void;
+  signUp: (email: string, password: string, fullName: string, phone?: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const USERS_KEY = 'found_it_users';
-const CURRENT_USER_KEY = 'found_it_current_user';
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem(CURRENT_USER_KEY);
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+  const fetchProfile = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (!error && data) {
+      setProfile(data);
     }
-    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        // Defer profile fetch with setTimeout to avoid deadlock
+        if (session?.user) {
+          setTimeout(() => {
+            fetchProfile(session.user.id);
+          }, 0);
+        } else {
+          setProfile(null);
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const getUsers = (): Record<string, { user: User; password: string }> => {
-    const users = localStorage.getItem(USERS_KEY);
-    return users ? JSON.parse(users) : {};
-  };
-
-  const saveUsers = (users: Record<string, { user: User; password: string }>) => {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  };
-
-  const login = async (email: string, password: string): Promise<boolean> => {
-    const users = getUsers();
-    const userRecord = users[email.toLowerCase()];
+  const signUp = async (email: string, password: string, fullName: string, phone?: string) => {
+    const redirectUrl = `${window.location.origin}/`;
     
-    if (userRecord && userRecord.password === password) {
-      setUser(userRecord.user);
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userRecord.user));
-      return true;
-    }
-    return false;
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          full_name: fullName,
+          phone: phone || null,
+        },
+      },
+    });
+
+    return { error: error as Error | null };
   };
 
-  const register = async (data: { fullName: string; email: string; phone: string; password: string }): Promise<boolean> => {
-    const users = getUsers();
-    const emailKey = data.email.toLowerCase();
-    
-    if (users[emailKey]) {
-      return false; // User already exists
-    }
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    const newUser: User = {
-      id: crypto.randomUUID(),
-      email: data.email,
-      fullName: data.fullName,
-      phone: data.phone,
-    };
-
-    users[emailKey] = { user: newUser, password: data.password };
-    saveUsers(users);
-    
-    setUser(newUser);
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
-    return true;
+    return { error: error as Error | null };
   };
 
-  const logout = () => {
+  const signOut = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem(CURRENT_USER_KEY);
+    setSession(null);
+    setProfile(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, session, profile, isLoading, signUp, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

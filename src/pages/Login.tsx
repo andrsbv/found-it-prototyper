@@ -5,16 +5,22 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Mail } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { signIn, user, isLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      navigate("/dashboard");
+    }
+  }, [user, isLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,27 +30,35 @@ const Login = () => {
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     
-    const success = await login(email, password);
+    const { error } = await signIn(email, password);
     
-    if (success) {
-      toast.success("¡Bienvenido de vuelta!");
-      navigate("/dashboard");
-    } else {
+    if (error) {
       toast.error("Credenciales incorrectas", {
         description: "Verifica tu correo y contraseña"
       });
+    } else {
+      toast.success("¡Bienvenido de vuelta!");
+      navigate("/dashboard");
     }
     
-    setIsLoading(false);
+    setIsSubmitting(false);
   };
 
   const handleGoogleLogin = () => {
     toast.info("Inicio con Google", {
-      description: "Esta funcionalidad requiere configuración de autenticación."
+      description: "Esta funcionalidad estará disponible próximamente."
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -92,8 +106,8 @@ const Login = () => {
                 />
               </div>
               
-              <Button className="w-full" size="lg" type="submit" disabled={isLoading}>
-                {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
+              <Button className="w-full" size="lg" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Iniciando sesión..." : "Iniciar Sesión"}
               </Button>
             </form>
             

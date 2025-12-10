@@ -5,13 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Mail, User, Phone } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { signUp, user, isLoading } = useAuth();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -19,7 +19,13 @@ const Register = () => {
     password: "",
     confirmPassword: "",
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      navigate("/dashboard");
+    }
+  }, [user, isLoading, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -51,34 +57,48 @@ const Register = () => {
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     
-    const success = await register({
-      fullName: formData.fullName,
-      email: formData.email,
-      phone: formData.phone,
-      password: formData.password,
-    });
+    const { error } = await signUp(
+      formData.email,
+      formData.password,
+      formData.fullName,
+      formData.phone
+    );
 
-    if (success) {
+    if (error) {
+      if (error.message.includes("already registered")) {
+        toast.error("Este correo ya está registrado", {
+          description: "Intenta iniciar sesión o usa otro correo."
+        });
+      } else {
+        toast.error("Error al registrar", {
+          description: error.message
+        });
+      }
+    } else {
       toast.success("¡Registro exitoso!", {
-        description: "Tu cuenta ha sido creada. Ya estás conectado."
+        description: "Tu cuenta ha sido creada."
       });
       navigate("/dashboard");
-    } else {
-      toast.error("Este correo ya está registrado", {
-        description: "Intenta iniciar sesión o usa otro correo."
-      });
     }
     
-    setIsLoading(false);
+    setIsSubmitting(false);
   };
 
   const handleGoogleRegister = () => {
     toast.info("Registro con Google", {
-      description: "Esta funcionalidad requiere configuración de autenticación."
+      description: "Esta funcionalidad estará disponible próximamente."
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -167,8 +187,8 @@ const Register = () => {
                 />
               </div>
               
-              <Button className="w-full" size="lg" type="submit" disabled={isLoading}>
-                {isLoading ? "Creando cuenta..." : "Crear Cuenta"}
+              <Button className="w-full" size="lg" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Creando cuenta..." : "Crear Cuenta"}
               </Button>
             </form>
             

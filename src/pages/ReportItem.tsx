@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Upload, Calendar as CalendarIcon, MapPin, Loader2 } from "lucide-react";
+import { Upload, Calendar as CalendarIcon, MapPin, Loader2, DollarSign } from "lucide-react";
 import { useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -17,6 +17,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { AnnouncementBanner } from "@/components/AnnouncementBanner";
+import { LostItemsSearch } from "@/components/LostItemsSearch";
 
 const ReportItem = () => {
   const { user } = useAuth();
@@ -26,6 +28,7 @@ const ReportItem = () => {
   const [date, setDate] = useState<Date>();
   const [reportType, setReportType] = useState<string>("lost");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showFoundForm, setShowFoundForm] = useState(false);
   
   // Form state
   const [itemName, setItemName] = useState("");
@@ -33,6 +36,15 @@ const ReportItem = () => {
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
   const [contactInfo, setContactInfo] = useState("");
+  const [rewardAmount, setRewardAmount] = useState("");
+
+  const handleSelectFoundItem = (itemId: string) => {
+    toast({
+      title: "¡Excelente!",
+      description: "Por favor contacta al dueño del objeto a través del panel de reportes.",
+    });
+    navigate(`/item/${itemId}`);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +81,7 @@ const ReportItem = () => {
         type: reportType,
         contact_info: contactInfo || null,
         status: 'active',
+        reward_amount: reportType === 'lost' && rewardAmount ? parseFloat(rewardAmount) : null,
       });
 
       if (error) throw error;
@@ -95,6 +108,44 @@ const ReportItem = () => {
     navigate(-1);
   };
 
+  // Show lost items search first when "found" is selected
+  if (reportType === "found" && !showFoundForm) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        
+        <div className="container py-12">
+          <div className="mx-auto max-w-3xl">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold">Encontré un Objeto</CardTitle>
+                <CardDescription>
+                  Busca entre los objetos reportados como perdidos para evitar duplicados
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AnnouncementBanner
+                  message="Si el objeto que encontraste ya fue reportado, podrás contactar directamente al dueño"
+                  variant="info"
+                />
+                <LostItemsSearch
+                  onSelectItem={handleSelectFoundItem}
+                  onSkip={() => setShowFoundForm(true)}
+                />
+              </CardContent>
+            </Card>
+            
+            <div className="mt-4 text-center">
+              <Button variant="ghost" onClick={() => setReportType("lost")}>
+                ← Volver a selección de tipo
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -109,11 +160,25 @@ const ReportItem = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <AnnouncementBanner
+                message="Recuerda incluir todos los detalles posibles para aumentar las posibilidades de recuperación"
+                variant="info"
+              />
+              
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Report Type */}
                 <div className="space-y-3">
                   <Label>Tipo de Reporte</Label>
-                  <RadioGroup value={reportType} onValueChange={setReportType} className="grid grid-cols-2 gap-4">
+                  <RadioGroup 
+                    value={reportType} 
+                    onValueChange={(value) => {
+                      setReportType(value);
+                      if (value === "found") {
+                        setShowFoundForm(false);
+                      }
+                    }} 
+                    className="grid grid-cols-2 gap-4"
+                  >
                     <div>
                       <RadioGroupItem value="lost" id="lost" className="peer sr-only" />
                       <Label
@@ -243,6 +308,29 @@ const ReportItem = () => {
                     </Popover>
                   </div>
                 </div>
+
+                {/* Reward Amount - Only for lost items */}
+                {reportType === "lost" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="reward">Recompensa Ofrecida (USD)</Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        id="reward"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="pl-10"
+                        value={rewardAmount}
+                        onChange={(e) => setRewardAmount(e.target.value)}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Opcional: Indica cuánto estás dispuesto a ofrecer como recompensa
+                    </p>
+                  </div>
+                )}
 
                 {/* Image Upload */}
                 <div className="space-y-2">

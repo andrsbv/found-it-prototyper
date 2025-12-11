@@ -25,6 +25,7 @@ export type Database = {
           image_url: string | null
           location: string
           name: string
+          reward_amount: number | null
           status: string
           type: string
           updated_at: string
@@ -40,6 +41,7 @@ export type Database = {
           image_url?: string | null
           location: string
           name: string
+          reward_amount?: number | null
           status?: string
           type: string
           updated_at?: string
@@ -55,6 +57,7 @@ export type Database = {
           image_url?: string | null
           location?: string
           name?: string
+          reward_amount?: number | null
           status?: string
           type?: string
           updated_at?: string

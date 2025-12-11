@@ -200,7 +200,7 @@ const Index = () => {
         <div className="container">
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-bold text-foreground md:text-4xl">
-              ¿Por Qué Usar lost2find?
+              ¿Por Qué Usar Lost2Find?
             </h2>
           </div>
           
@@ -277,7 +277,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border bg-muted/30 py-8">
         <div className="container text-center text-sm text-muted-foreground">
-          <p>© 2025 lost2find. Todos los derechos reservados.</p>
+          <p>© 2025 Lost2Find. Todos los derechos reservados.</p>
           <p className="mt-2">Plataforma institucional de objetos perdidos y encontrados</p>
         </div>
       </footer>

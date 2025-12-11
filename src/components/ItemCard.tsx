@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, MapPin } from "lucide-react";
+import { Clock, MapPin, DollarSign } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface ItemCardProps {
@@ -13,9 +13,10 @@ interface ItemCardProps {
   date: string;
   status: "lost" | "found" | "returned";
   image?: string;
+  reward?: number;
 }
 
-export const ItemCard = ({ id, title, description, category, location, date, status, image }: ItemCardProps) => {
+export const ItemCard = ({ id, title, description, category, location, date, status, image, reward }: ItemCardProps) => {
   const statusConfig = {
     lost: { label: "Perdido", variant: "warning" as const },
     found: { label: "Encontrado", variant: "success" as const },
@@ -32,9 +33,17 @@ export const ItemCard = ({ id, title, description, category, location, date, sta
       <CardHeader className="space-y-2">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-lg font-semibold text-foreground line-clamp-1">{title}</h3>
-          <Badge variant={statusConfig[status].variant}>
-            {statusConfig[status].label}
-          </Badge>
+          <div className="flex items-center gap-1">
+            {reward && reward > 0 && (
+              <Badge variant="success" className="gap-1">
+                <DollarSign className="h-3 w-3" />
+                {reward}
+              </Badge>
+            )}
+            <Badge variant={statusConfig[status].variant}>
+              {statusConfig[status].label}
+            </Badge>
+          </div>
         </div>
         <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
       </CardHeader>

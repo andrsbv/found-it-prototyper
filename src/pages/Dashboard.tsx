@@ -1,120 +1,120 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { ItemCard } from "@/components/ItemCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Filter, SlidersHorizontal } from "lucide-react";
+import { Search, Filter, SlidersHorizontal, Loader2 } from "lucide-react";
+import { AnnouncementBanner } from "@/components/AnnouncementBanner";
+import { supabase } from "@/integrations/supabase/client";
+
+interface ItemReport {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  location: string;
+  date: string;
+  type: string;
+  status: string;
+  image_url: string | null;
+  reward_amount: number | null;
+  created_at: string;
+}
 
 const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("all");
+  const [items, setItems] = useState<ItemReport[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - in real app this would come from backend
-  const mockItems = [
-    {
-      id: "1",
-      title: "iPhone 13 Pro",
-      description: "iPhone color azul con funda negra. Última vez visto en la biblioteca",
-      category: "Electrónicos",
-      location: "Biblioteca Central - Piso 2",
-      date: "Hace 2 horas",
-      status: "lost" as const,
-      image: "https://images.unsplash.com/photo-1632661674596-df8be070a5c5?w=400&h=300&fit=crop"
-    },
-    {
-      id: "2",
-      title: "Mochila Deportiva Nike",
-      description: "Mochila negra con el logo de Nike, contiene cuadernos y calculadora",
-      category: "Accesorios",
-      location: "Canchas Deportivas",
-      date: "Hace 5 horas",
-      status: "found" as const,
-      image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&h=300&fit=crop"
-    },
-    {
-      id: "3",
-      title: "Calculadora Casio FX-991",
-      description: "Calculadora científica con nombre escrito en la parte posterior",
-      category: "Útiles",
-      location: "Facultad de Ingeniería - Aula 3B",
-      date: "Hace 1 día",
-      status: "found" as const,
-    },
-    {
-      id: "4",
-      title: "Llaves con llavero de Pokemon",
-      description: "Juego de 3 llaves con llavero de Pikachu",
-      category: "Documentos/Llaves",
-      location: "Comedor Universitario",
-      date: "Hace 3 horas",
-      status: "lost" as const,
-    },
-    {
-      id: "5",
-      title: "Audífonos Sony WH-1000XM4",
-      description: "Audífonos inalámbricos color negro con estuche",
-      category: "Electrónicos",
-      location: "Laboratorio de Computación",
-      date: "Hace 6 horas",
-      status: "returned" as const,
-      image: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=400&h=300&fit=crop"
-    },
-    {
-      id: "6",
-      title: "Cartera de Cuero",
-      description: "Cartera marrón de cuero con documentos de identificación",
-      category: "Documentos/Llaves",
-      location: "Edificio Administrativo",
-      date: "Hace 4 horas",
-      status: "found" as const,
-    },
-  ];
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  const fetchItems = async () => {
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from('item_reports')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setItems(data);
+    }
+    setIsLoading(false);
+  };
+
+  const getCategoryLabel = (category: string) => {
+    const labels: Record<string, string> = {
+      electronics: "Electrónicos",
+      accessories: "Accesorios",
+      documents: "Documentos/Llaves",
+      supplies: "Útiles Escolares",
+      clothing: "Ropa/Calzado",
+      sports: "Deportivos",
+      other: "Otros",
+    };
+    return labels[category] || category;
+  };
+
+  const getLocationLabel = (location: string) => {
+    const labels: Record<string, string> = {
+      biblioteca: "Biblioteca Central",
+      comedor: "Comedor Universitario",
+      canchas: "Canchas Deportivas",
+      ing: "Facultad de Ingeniería",
+      admin: "Edificio Administrativo",
+      lab: "Laboratorios",
+      auditorio: "Auditorio",
+      estacionamiento: "Estacionamiento",
+      otro: "Otro",
+    };
+    return labels[location] || location;
+  };
 
   // Filter items based on search, category, and tab
   const filteredItems = useMemo(() => {
-    return mockItems.filter((item) => {
-      // Search filter - checks title, description, location, and category
+    return items.filter((item) => {
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch = searchQuery === "" || 
-        item.title.toLowerCase().includes(searchLower) ||
-        item.description.toLowerCase().includes(searchLower) ||
-        item.location.toLowerCase().includes(searchLower) ||
-        item.category.toLowerCase().includes(searchLower);
+        item.name.toLowerCase().includes(searchLower) ||
+        (item.description?.toLowerCase().includes(searchLower) || false) ||
+        getLocationLabel(item.location).toLowerCase().includes(searchLower) ||
+        getCategoryLabel(item.category).toLowerCase().includes(searchLower);
 
-      // Category filter
-      const matchesCategory = categoryFilter === "all" || (() => {
-        switch (categoryFilter) {
-          case "electronics":
-            return item.category === "Electrónicos";
-          case "accessories":
-            return item.category === "Accesorios";
-          case "documents":
-            return item.category === "Documentos/Llaves";
-          case "supplies":
-            return item.category === "Útiles";
-          default:
-            return true;
-        }
-      })();
+      const matchesCategory = categoryFilter === "all" || item.category === categoryFilter;
 
-      // Tab filter (status)
       const matchesTab = activeTab === "all" || 
-        (activeTab === "lost" && item.status === "lost") ||
-        (activeTab === "found" && item.status === "found");
+        (activeTab === "lost" && item.type === "lost") ||
+        (activeTab === "found" && item.type === "found");
 
       return matchesSearch && matchesCategory && matchesTab;
     });
-  }, [searchQuery, categoryFilter, activeTab, mockItems]);
+  }, [searchQuery, categoryFilter, activeTab, items]);
 
   // Count items per category for display
   const counts = useMemo(() => ({
-    all: mockItems.length,
-    lost: mockItems.filter(i => i.status === "lost").length,
-    found: mockItems.filter(i => i.status === "found").length,
-  }), [mockItems]);
+    all: items.length,
+    lost: items.filter(i => i.type === "lost").length,
+    found: items.filter(i => i.type === "found").length,
+  }), [items]);
+
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours < 1) return "Hace menos de 1 hora";
+    if (diffHours < 24) return `Hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+    if (diffDays < 7) return `Hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
+    return date.toLocaleDateString('es-EC');
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -126,9 +126,14 @@ const Dashboard = () => {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Objetos Perdidos y Encontrados</h1>
             <p className="text-muted-foreground">
-              Busca entre {mockItems.length} reportes activos o reporta un objeto
+              Busca entre {items.length} reportes activos o reporta un objeto
             </p>
           </div>
+
+          <AnnouncementBanner
+            message="Nuevo: Ahora puedes ofrecer recompensas por objetos perdidos. ¡Aumenta tus chances de recuperación!"
+            variant="info"
+          />
 
           {/* Search and Filters */}
           <div className="flex flex-col gap-4 md:flex-row">
@@ -152,10 +157,13 @@ const Dashboard = () => {
                   <SelectItem value="electronics">Electrónicos</SelectItem>
                   <SelectItem value="accessories">Accesorios</SelectItem>
                   <SelectItem value="documents">Documentos/Llaves</SelectItem>
-                  <SelectItem value="supplies">Útiles</SelectItem>
+                  <SelectItem value="supplies">Útiles Escolares</SelectItem>
+                  <SelectItem value="clothing">Ropa/Calzado</SelectItem>
+                  <SelectItem value="sports">Deportivos</SelectItem>
+                  <SelectItem value="other">Otros</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" onClick={fetchItems}>
                 <SlidersHorizontal className="h-4 w-4" />
               </Button>
             </div>
@@ -171,10 +179,42 @@ const Dashboard = () => {
           </TabsList>
 
           <TabsContent value={activeTab} className="space-y-6">
-            {filteredItems.length > 0 ? (
+            {activeTab === "lost" && (
+              <AnnouncementBanner
+                message="Los objetos marcados con $ tienen una recompensa ofrecida por el dueño"
+                variant="success"
+                dismissible={true}
+              />
+            )}
+            
+            {activeTab === "found" && (
+              <AnnouncementBanner
+                message="Si encontraste un objeto, verifica primero si ya fue reportado como perdido antes de crear un nuevo reporte"
+                variant="warning"
+                dismissible={true}
+              />
+            )}
+
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                <p className="text-muted-foreground">Cargando reportes...</p>
+              </div>
+            ) : filteredItems.length > 0 ? (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredItems.map((item) => (
-                  <ItemCard key={item.id} {...item} />
+                  <ItemCard 
+                    key={item.id} 
+                    id={item.id}
+                    title={item.name}
+                    description={item.description || "Sin descripción"}
+                    category={getCategoryLabel(item.category)}
+                    location={getLocationLabel(item.location)}
+                    date={getTimeAgo(item.created_at)}
+                    status={item.type as "lost" | "found" | "returned"}
+                    image={item.image_url || undefined}
+                    reward={item.reward_amount || undefined}
+                  />
                 ))}
               </div>
             ) : (

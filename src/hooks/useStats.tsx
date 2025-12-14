@@ -29,7 +29,7 @@ export const useStats = (): Stats => {
         const { count: recoveredCount } = await supabase
           .from('item_reports')
           .select('*', { count: 'exact', head: true })
-          .eq('status', 'recovered');
+          .eq('status', 'resolved');
 
         // Fetch total users count from profiles
         const { count: usersCount } = await supabase
